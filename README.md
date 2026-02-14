@@ -90,10 +90,30 @@ If the Playground doesn't work, use the full OAuth flow:
 
 - [Node.js](https://nodejs.org/) 18 or later
 
-### Build from Source
+### Use via npx (recommended)
+
+No installation required — just configure your MCP client to run:
 
 ```bash
-git clone <repo-url>
+npx monzo-mcp-server
+```
+
+### Install globally
+
+```bash
+npm install -g monzo-mcp-server
+```
+
+Then run:
+
+```bash
+monzo-mcp-server
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/samstorment/monzo-mcp-server.git
 cd monzo-mcp-server
 npm install
 npm run build
@@ -114,8 +134,8 @@ Add the following to your Claude Desktop config file:
 {
   "mcpServers": {
     "monzo": {
-      "command": "node",
-      "args": ["/absolute/path/to/monzo-mcp-server/build/index.js"],
+      "command": "npx",
+      "args": ["monzo-mcp-server"],
       "env": {
         "MONZO_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -134,8 +154,8 @@ Add to your project's `.mcp.json`:
 {
   "mcpServers": {
     "monzo": {
-      "command": "node",
-      "args": ["/absolute/path/to/monzo-mcp-server/build/index.js"],
+      "command": "npx",
+      "args": ["monzo-mcp-server"],
       "env": {
         "MONZO_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -144,12 +164,18 @@ Add to your project's `.mcp.json`:
 }
 ```
 
+Or add it directly via the CLI:
+
+```bash
+claude mcp add monzo -- npx monzo-mcp-server
+```
+
 ### Other MCP Clients (Cursor, Windsurf, Cline, etc.)
 
 Refer to your client's documentation for how to add an MCP server. The server command is:
 
 ```
-node /absolute/path/to/monzo-mcp-server/build/index.js
+npx monzo-mcp-server
 ```
 
 With the environment variable `MONZO_ACCESS_TOKEN` set to your token.
