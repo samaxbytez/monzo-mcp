@@ -1,0 +1,20 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - monzoAccessToken
+    properties:
+      monzoAccessToken:
+        type: string
+        description: Your Monzo API access token from developers.monzo.com/api/playground
+  commandFunction: |
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'monzo-mcp'],
+      env: {
+        MONZO_ACCESS_TOKEN: config.monzoAccessToken
+      }
+    })
+  exampleConfig:
+    monzoAccessToken: "your_monzo_access_token_here"
