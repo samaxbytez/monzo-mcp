@@ -345,4 +345,4 @@ Pots with "added security" (locked pots) cannot be withdrawn from via the API. U
 
 ## License
 
-ISC
+MIT
