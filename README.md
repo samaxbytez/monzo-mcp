@@ -60,13 +60,13 @@ You need an access token to use this server.
 No installation required — just configure your MCP client to run:
 
 ```bash
-npx @andelle/monzo-mcp-server
+npx monzo-mcp
 ```
 
 ### Install globally
 
 ```bash
-npm install -g @andelle/monzo-mcp-server
+npm install -g monzo-mcp
 ```
 
 Then run:
@@ -100,7 +100,7 @@ Add the following to your Claude Desktop config file:
   "mcpServers": {
     "monzo": {
       "command": "npx",
-      "args": ["@andelle/monzo-mcp-server"],
+      "args": ["monzo-mcp"],
       "env": {
         "MONZO_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -120,7 +120,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "monzo": {
       "command": "npx",
-      "args": ["@andelle/monzo-mcp-server"],
+      "args": ["monzo-mcp"],
       "env": {
         "MONZO_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -132,7 +132,7 @@ Add to your project's `.mcp.json`:
 Or add it directly via the CLI:
 
 ```bash
-claude mcp add monzo -- npx @andelle/monzo-mcp-server
+claude mcp add monzo -- npx monzo-mcp
 ```
 
 ### Other MCP Clients (Cursor, Windsurf, Cline, etc.)
@@ -140,7 +140,7 @@ claude mcp add monzo -- npx @andelle/monzo-mcp-server
 Refer to your client's documentation for how to add an MCP server. The server command is:
 
 ```
-npx @andelle/monzo-mcp-server
+npx monzo-mcp
 ```
 
 With the environment variable `MONZO_ACCESS_TOKEN` set to your token.

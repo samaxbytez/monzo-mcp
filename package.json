@@ -1,5 +1,5 @@
 {
-  "name": "@andelle/monzo-mcp-server",
+  "name": "monzo-mcp",
   "version": "1.0.0",
   "description": "MCP server for the Monzo banking API",
   "type": "module",
