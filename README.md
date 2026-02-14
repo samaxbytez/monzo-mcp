@@ -24,7 +24,7 @@ Works with any MCP-compatible client, including Claude Desktop, Claude Code, Cur
 
 ## Getting Your Monzo Access Token
 
-You need an access token to use this server. Follow these steps:
+You need an access token to use this server.
 
 ### Step 1: Create a Monzo Developer Account
 
@@ -32,20 +32,7 @@ You need an access token to use this server. Follow these steps:
 2. Log in with your Monzo email address
 3. You'll receive a magic link in your email — click it to sign in
 
-### Step 2: Create an OAuth Client
-
-1. Once logged in, go to **Clients** and click **New OAuth Client**
-2. Fill in the details:
-   - **Name**: Something like "MCP Server" (this is just for your reference)
-   - **Logo URL**: Can be left blank
-   - **Redirect URLs**: Enter `http://localhost:8374/callback` (or any URL — you'll use the Playground instead)
-   - **Description**: Optional
-   - **Confidentiality**: Select **Confidential** (this gives you refresh tokens)
-3. Click **Submit** and note down your **Client ID** and **Client Secret**
-
-### Step 3: Get an Access Token via the API Playground
-
-The fastest way to get a token:
+### Step 2: Get an Access Token via the API Playground
 
 1. Go to [developers.monzo.com/api/playground](https://developers.monzo.com/api/playground)
 2. Click **Auth** to start the authentication flow
@@ -53,34 +40,12 @@ The fastest way to get a token:
 4. Once approved, the Playground will show your **Access Token**
 5. Copy this token — you'll need it in the next section
 
-### Step 4: (Alternative) Get a Token via OAuth Flow
-
-If the Playground doesn't work, use the full OAuth flow:
-
-1. Open this URL in your browser (replace `YOUR_CLIENT_ID`):
-   ```
-   https://auth.monzo.com/?client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost:8374/callback&response_type=code&state=random123
-   ```
-2. Log in with your email, then approve in the Monzo app
-3. You'll be redirected to `http://localhost:8374/callback?code=AUTH_CODE&state=random123`
-4. Copy the `code` value from the URL
-5. Exchange it for an access token:
-   ```bash
-   curl -X POST "https://api.monzo.com/oauth2/token" \
-     -d "grant_type=authorization_code" \
-     -d "client_id=YOUR_CLIENT_ID" \
-     -d "client_secret=YOUR_CLIENT_SECRET" \
-     -d "redirect_uri=http://localhost:8374/callback" \
-     -d "code=AUTH_CODE"
-   ```
-6. The response contains your `access_token`
-
 ### Important Notes About Tokens
 
 - **Tokens expire** after approximately **6 hours**
 - After authentication, you have **5 minutes** of full transaction history access. After that, only the **last 90 days** are available
 - Generating a new token **invalidates** the previous one
-- If your token expires, you'll need to repeat Step 3 or Step 4
+- If your token expires, repeat Step 2
 
 ---
 
