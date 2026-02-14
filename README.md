@@ -72,7 +72,7 @@ npm install -g monzo-mcp
 Then run:
 
 ```bash
-monzo-mcp-server
+monzo-mcp
 ```
 
 ### Build from source
