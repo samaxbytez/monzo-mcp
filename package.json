@@ -1,0 +1,30 @@
+{
+  "name": "monzo-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for the Monzo banking API",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "monzo-mcp-server": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && chmod 755 build/index.js",
+    "dev": "tsc --watch",
+    "start": "node build/index.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.0",
+    "typescript": "^5.8.3"
+  }
+}
