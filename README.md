@@ -1,6 +1,8 @@
 # Monzo MCP Server
 
-An MCP (Model Context Protocol) server that connects Claude to the [Monzo banking API](https://docs.monzo.com). Ask Claude to check your balance, list transactions, manage pots, and more — all through natural language.
+An MCP (Model Context Protocol) server for the [Monzo banking API](https://docs.monzo.com). Check your balance, list transactions, manage pots, and more — all through natural language.
+
+Works with any MCP-compatible client, including Claude Desktop, Claude Code, Cursor, Windsurf, Cline, and others.
 
 > **Note:** The Monzo Developer API is for personal use only. You can only connect to your own account or a small number of explicitly allowed users.
 
@@ -142,6 +144,16 @@ Add to your project's `.mcp.json`:
 }
 ```
 
+### Other MCP Clients (Cursor, Windsurf, Cline, etc.)
+
+Refer to your client's documentation for how to add an MCP server. The server command is:
+
+```
+node /absolute/path/to/monzo-mcp-server/build/index.js
+```
+
+With the environment variable `MONZO_ACCESS_TOKEN` set to your token.
+
 ### Environment Variables
 
 | Variable | Required | Description |
@@ -152,7 +164,7 @@ Add to your project's `.mcp.json`:
 
 ## Usage Examples
 
-Once configured, you can ask Claude things like:
+Once configured, you can ask your AI assistant things like (using Claude as an example):
 
 - **"What's my Monzo balance?"** — calls `monzo_get_balance`
 - **"Show my recent transactions"** — calls `monzo_list_transactions`
