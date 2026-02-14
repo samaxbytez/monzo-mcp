@@ -1,6 +1,6 @@
 {
   "name": "monzo-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for the Monzo banking API",
   "type": "module",
   "license": "MIT",
@@ -15,11 +15,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/samaxbytez/monzo-mcp-server.git"
+    "url": "git+https://github.com/samaxbytez/monzo-mcp.git"
   },
-  "homepage": "https://github.com/samaxbytez/monzo-mcp-server#readme",
+  "homepage": "https://github.com/samaxbytez/monzo-mcp#readme",
   "bugs": {
-    "url": "https://github.com/samaxbytez/monzo-mcp-server/issues"
+    "url": "https://github.com/samaxbytez/monzo-mcp/issues"
   },
   "bin": {
     "monzo-mcp-server": "build/index.js"

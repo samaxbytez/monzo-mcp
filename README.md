@@ -78,8 +78,8 @@ monzo-mcp-server
 ### Build from source
 
 ```bash
-git clone https://github.com/samaxbytez/monzo-mcp-server.git
-cd monzo-mcp-server
+git clone https://github.com/samaxbytez/monzo-mcp.git
+cd monzo-mcp
 npm install
 npm run build
 ```
