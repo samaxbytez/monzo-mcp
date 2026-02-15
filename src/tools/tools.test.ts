@@ -36,10 +36,12 @@ function createMockClient() {
   } as unknown as MonzoClient;
 }
 
-let errorSpy: ReturnType<typeof vi.spyOn>;
-
 beforeEach(() => {
-  errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 // ─── Account Tools ──────────────────────────────────────────────────────
