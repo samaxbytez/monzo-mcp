@@ -1,77 +1,50 @@
-# Monzo MCP Server
+# monzo-mcp
 
-An MCP (Model Context Protocol) server for the [Monzo banking API](https://docs.monzo.com). Check your balance, list transactions, manage pots, and more — all through natural language.
+[![npm version](https://img.shields.io/npm/v/monzo-mcp.svg)](https://www.npmjs.com/package/monzo-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Works with any MCP-compatible client, including Claude Desktop, Claude Code, Cursor, Windsurf, Cline, and others.
+An MCP (Model Context Protocol) server for the [Monzo banking API](https://docs.monzo.com). Connect Claude and other AI assistants to your Monzo account to check balances, view transactions, manage pots, and more.
+
+Works with any MCP-compatible client, including Claude Desktop, Claude Code, Cursor, Windsurf, Cline, and others. Provides 19 tools covering accounts, transactions, pots, feed items, attachments, receipts, and webhooks.
 
 > **Note:** The Monzo Developer API is for personal use only. You can only connect to your own account or a small number of explicitly allowed users.
 
 ## Features
 
-19 tools covering the full Monzo API:
+- **Accounts** - Verify identity, list accounts, get balance
+- **Pots** - List pots, deposit into and withdraw from pots
+- **Transactions** - List transactions, get details, annotate with metadata
+- **Feed** - Create custom feed items in the Monzo app
+- **Attachments** - Upload images and attach them to transactions
+- **Receipts** - Create, get, and delete digital receipts
+- **Webhooks** - Register, list, and delete real-time webhooks
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| **Accounts** | `monzo_whoami`, `monzo_list_accounts`, `monzo_get_balance` | View account info and balances |
-| **Pots** | `monzo_list_pots`, `monzo_deposit_into_pot`, `monzo_withdraw_from_pot` | Manage savings pots |
-| **Transactions** | `monzo_list_transactions`, `monzo_get_transaction`, `monzo_annotate_transaction` | Browse and annotate transactions |
-| **Feed** | `monzo_create_feed_item` | Push custom items to the Monzo app feed |
-| **Attachments** | `monzo_upload_attachment`, `monzo_register_attachment`, `monzo_deregister_attachment` | Attach images to transactions |
-| **Receipts** | `monzo_create_receipt`, `monzo_get_receipt`, `monzo_delete_receipt` | Manage digital receipts |
-| **Webhooks** | `monzo_register_webhook`, `monzo_list_webhooks`, `monzo_delete_webhook` | Set up real-time notifications |
+## Prerequisites
 
----
+You need a **Monzo Access Token**. To get one:
 
-## Getting Your Monzo Access Token
+1. Go to [developers.monzo.com](https://developers.monzo.com) and log in with your Monzo email
+2. Go to the [API Playground](https://developers.monzo.com/api/playground) and click **Auth**
+3. Approve the **push notification** on your Monzo app (PIN, fingerprint, or Face ID)
+4. Copy the **Access Token** shown in the Playground
 
-You need an access token to use this server.
-
-### Step 1: Create a Monzo Developer Account
-
-1. Go to [developers.monzo.com](https://developers.monzo.com)
-2. Log in with your Monzo email address
-3. You'll receive a magic link in your email — click it to sign in
-
-### Step 2: Get an Access Token via the API Playground
-
-1. Go to [developers.monzo.com/api/playground](https://developers.monzo.com/api/playground)
-2. Click **Auth** to start the authentication flow
-3. You'll receive a **push notification** on your Monzo app — tap it and verify with your PIN, fingerprint, or Face ID (Strong Customer Authentication)
-4. Once approved, the Playground will show your **Access Token**
-5. Copy this token — you'll need it in the next section
-
-### Important Notes About Tokens
-
-- **Tokens expire** after approximately **6 hours**
-- After authentication, you have **5 minutes** of full transaction history access. After that, only the **last 90 days** are available
+**Important notes about tokens:**
+- Tokens expire after approximately **6 hours**
+- After authentication, you have **5 minutes** of full transaction history access; after that, only the **last 90 days** are available
 - Generating a new token **invalidates** the previous one
-- If your token expires, repeat Step 2
-
----
 
 ## Installation
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 18 or later
-
-### Use via npx (recommended)
-
-No installation required — just configure your MCP client to run:
+### Using npx (recommended)
 
 ```bash
 npx monzo-mcp
 ```
 
-### Install globally
+### Global install
 
 ```bash
 npm install -g monzo-mcp
-```
-
-Then run:
-
-```bash
 monzo-mcp
 ```
 
@@ -82,25 +55,27 @@ git clone https://github.com/samaxbytez/monzo-mcp.git
 cd monzo-mcp
 npm install
 npm run build
+node build/index.js
 ```
-
----
 
 ## Configuration
 
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONZO_ACCESS_TOKEN` | Yes | Your Monzo API access token |
+
 ### Claude Desktop
 
-Add the following to your Claude Desktop config file:
-
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "monzo": {
       "command": "npx",
-      "args": ["monzo-mcp"],
+      "args": ["-y", "monzo-mcp"],
       "env": {
         "MONZO_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -109,9 +84,7 @@ Add the following to your Claude Desktop config file:
 }
 ```
 
-Then restart Claude Desktop.
-
-### Claude Code (CLI)
+### Claude Code
 
 Add to your project's `.mcp.json`:
 
@@ -120,7 +93,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "monzo": {
       "command": "npx",
-      "args": ["monzo-mcp"],
+      "args": ["-y", "monzo-mcp"],
       "env": {
         "MONZO_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -129,222 +102,178 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-Or add it directly via the CLI:
+### Other MCP Clients
+
+Set the `MONZO_ACCESS_TOKEN` environment variable and run:
 
 ```bash
-claude mcp add monzo -- npx monzo-mcp
+MONZO_ACCESS_TOKEN=your_token npx monzo-mcp
 ```
 
-### Other MCP Clients (Cursor, Windsurf, Cline, etc.)
-
-Refer to your client's documentation for how to add an MCP server. The server command is:
+## Architecture
 
 ```
-npx monzo-mcp
+monzo-mcp/
+├── src/
+│   ├── index.ts              # Entry point, server setup
+│   ├── client.ts             # Monzo API HTTP client
+│   ├── utils.ts              # Shared utilities (jsonResponse, errorResponse, etc.)
+│   ├── client.test.ts        # Client tests
+│   ├── utils.test.ts         # Utils tests
+│   └── tools/
+│       ├── accounts.ts       # Account info and balance tools
+│       ├── pots.ts           # Pot management tools
+│       ├── transactions.ts   # Transaction tools
+│       ├── feed.ts           # Feed item tools
+│       ├── attachments.ts    # Attachment tools
+│       ├── receipts.ts       # Receipt tools
+│       ├── webhooks.ts       # Webhook tools
+│       └── tools.test.ts     # Tool handler tests
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
 
-With the environment variable `MONZO_ACCESS_TOKEN` set to your token.
+**Design decisions:**
+- Uses Pattern A (Simple Bearer Token) since Monzo uses personal access tokens
+- One file per tool category for clean separation of concerns
+- All tool handlers use consistent `logToolCall()` + `try/catch` + `jsonResponse()`/`errorResponse()` pattern
+- Amounts are in **pence** (minor units) as per Monzo API convention
 
-### Environment Variables
+## Tools Reference
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MONZO_ACCESS_TOKEN` | Yes | Your Monzo API access token |
+### Accounts (3 tools)
 
----
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_whoami` | Verify authenticated user, returns user ID and auth type | `GET /ping/whoami` |
+| `monzo_list_accounts` | List all accounts, optionally filter by type (`uk_retail`, `uk_retail_joint`) | `GET /accounts` |
+| `monzo_get_balance` | Get account balance, total balance, currency, and spend today (in pence) | `GET /balance` |
 
-## Usage Examples
+### Pots (3 tools)
 
-Once configured, you can ask your AI assistant things like (using Claude as an example):
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_list_pots` | List all pots for an account | `GET /pots` |
+| `monzo_deposit_into_pot` | Move money from account into a pot (amount in pence, requires dedupe_id) | `PUT /pots/{pot_id}/deposit` |
+| `monzo_withdraw_from_pot` | Move money from pot back to account (locked pots cannot be withdrawn via API) | `PUT /pots/{pot_id}/withdraw` |
 
-- **"What's my Monzo balance?"** — calls `monzo_get_balance`
-- **"Show my recent transactions"** — calls `monzo_list_transactions`
-- **"List my pots"** — calls `monzo_list_pots`
-- **"Move £50 into my Holiday pot"** — calls `monzo_deposit_into_pot`
-- **"What did I spend at Tesco last week?"** — calls `monzo_list_transactions` with filters
-- **"Send me a notification in Monzo saying 'Remember to buy milk'"** — calls `monzo_create_feed_item`
+### Transactions (3 tools)
 
----
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_list_transactions` | List transactions with optional since/before/limit filters (90-day limit after 5 min) | `GET /transactions` |
+| `monzo_get_transaction` | Get single transaction details, optionally expand merchant info | `GET /transactions/{id}` |
+| `monzo_annotate_transaction` | Add custom key-value metadata to a transaction | `PATCH /transactions/{id}` |
 
-## Tool Reference
+### Feed (1 tool)
 
-### Accounts
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_create_feed_item` | Create a custom item in the Monzo app feed with title, body, optional image/URL | `POST /feed` |
 
-#### `monzo_whoami`
-Verify the authenticated user. Returns user ID, authentication type, and client ID.
+### Attachments (3 tools)
 
-#### `monzo_list_accounts`
-List all accounts. Optionally filter by `account_type` (`uk_retail`, `uk_retail_joint`).
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_upload_attachment` | Get a pre-signed upload URL for an image | `POST /attachment/upload` |
+| `monzo_register_attachment` | Attach an uploaded image to a transaction | `POST /attachment/register` |
+| `monzo_deregister_attachment` | Remove an attachment from a transaction | `POST /attachment/deregister` |
 
-#### `monzo_get_balance`
-Get the balance for a specific account. Returns balance, total balance, currency, and spend today — all in **pence** (minor units).
+### Receipts (3 tools)
 
-**Parameters:**
-- `account_id` (required) — The account ID
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_create_receipt` | Create or update a digital receipt on a transaction | `PUT /transaction-receipts` |
+| `monzo_get_receipt` | Get a receipt by external ID | `GET /transaction-receipts` |
+| `monzo_delete_receipt` | Delete a receipt | `DELETE /transaction-receipts` |
 
----
+### Webhooks (3 tools)
 
-### Pots
+| Tool | Description | API Endpoint |
+|------|-------------|-------------|
+| `monzo_register_webhook` | Register a URL for real-time transaction notifications | `POST /webhooks` |
+| `monzo_list_webhooks` | List all webhooks for an account | `GET /webhooks` |
+| `monzo_delete_webhook` | Delete a webhook | `DELETE /webhooks/{id}` |
 
-#### `monzo_list_pots`
-List all pots for an account.
+## Example Prompts
 
-**Parameters:**
-- `current_account_id` (required) — The account ID
+- "What's my Monzo balance?"
+- "Show my recent transactions"
+- "List my pots"
+- "Move 50 pounds into my Holiday pot"
+- "What did I spend at Tesco last week?"
+- "Send me a notification in Monzo saying 'Remember to buy milk'"
+- "Show me my webhooks"
+- "Annotate my last transaction with a note"
 
-#### `monzo_deposit_into_pot`
-Move money from your account into a pot.
+## Development
 
-**Parameters:**
-- `pot_id` (required) — The pot to deposit into
-- `source_account_id` (required) — The account to move money from
-- `amount` (required) — Amount in **pence** (e.g. `1000` = £10.00)
-- `dedupe_id` (required) — A unique string to prevent duplicate deposits
+### Build
 
-#### `monzo_withdraw_from_pot`
-Move money from a pot back into your account. Pots with "added security" (lock) cannot be withdrawn via API.
+```bash
+npm run build
+```
 
-**Parameters:**
-- `pot_id` (required) — The pot to withdraw from
-- `destination_account_id` (required) — The account to move money to
-- `amount` (required) — Amount in **pence**
-- `dedupe_id` (required) — A unique string to prevent duplicate withdrawals
+### Run tests
 
----
+```bash
+npm test
+```
 
-### Transactions
+### Watch mode
 
-#### `monzo_list_transactions`
-List transactions for an account. Limited to the last 90 days (after 5 minutes post-authentication).
+```bash
+npm run test:watch
+```
 
-**Parameters:**
-- `account_id` (required) — The account ID
-- `since` (optional) — RFC 3339 timestamp or object ID (e.g. `2024-01-01T00:00:00Z`)
-- `before` (optional) — RFC 3339 timestamp
-- `limit` (optional) — Results per page (default 30, max 100)
+### Lint
 
-#### `monzo_get_transaction`
-Get details of a single transaction.
+```bash
+npm run lint
+```
 
-**Parameters:**
-- `transaction_id` (required) — The transaction ID
-- `expand_merchant` (optional) — Set to `true` to include full merchant details
+### Format
 
-#### `monzo_annotate_transaction`
-Add custom key-value metadata to a transaction.
+```bash
+npm run format
+```
 
-**Parameters:**
-- `transaction_id` (required) — The transaction ID
-- `key` (required) — The metadata key
-- `value` (required) — The metadata value (empty string to delete)
+### Adding new tools
 
----
-
-### Feed
-
-#### `monzo_create_feed_item`
-Create a custom item in the Monzo app feed.
-
-**Parameters:**
-- `account_id` (required) — The account ID
-- `title` (required) — Feed item title
-- `body` (required) — Feed item body text
-- `image_url` (optional) — URL of an image to display
-- `url` (optional) — URL to open when tapped
-
----
-
-### Attachments
-
-#### `monzo_upload_attachment`
-Get a pre-signed upload URL for an image.
-
-**Parameters:**
-- `file_name` (required) — e.g. `receipt.png`
-- `file_type` (required) — MIME type, e.g. `image/png`
-- `content_length` (required) — File size in bytes
-
-#### `monzo_register_attachment`
-Attach an uploaded image to a transaction.
-
-**Parameters:**
-- `external_id` (required) — The transaction ID
-- `file_url` (required) — The URL from `monzo_upload_attachment`
-- `file_type` (required) — MIME type
-
-#### `monzo_deregister_attachment`
-Remove an attachment from a transaction.
-
-**Parameters:**
-- `id` (required) — The attachment ID
-
----
-
-### Receipts
-
-#### `monzo_create_receipt`
-Create or update a digital receipt on a transaction.
-
-**Parameters:**
-- `transaction_id` (required) — The transaction ID
-- `items` (required) — JSON array of receipt items (each with `description`, `amount` in pence, `currency`, `quantity`)
-- `tax` (optional) — Total tax in pence
-
-#### `monzo_get_receipt`
-Get a receipt by its external ID.
-
-**Parameters:**
-- `external_id` (required) — Typically the transaction ID
-
-#### `monzo_delete_receipt`
-Delete a receipt.
-
-**Parameters:**
-- `external_id` (required) — Typically the transaction ID
-
----
-
-### Webhooks
-
-#### `monzo_register_webhook`
-Register a URL to receive real-time transaction notifications.
-
-**Parameters:**
-- `account_id` (required) — The account ID
-- `url` (required) — The webhook URL
-
-#### `monzo_list_webhooks`
-List all webhooks for an account.
-
-**Parameters:**
-- `account_id` (required) — The account ID
-
-#### `monzo_delete_webhook`
-Delete a webhook.
-
-**Parameters:**
-- `webhook_id` (required) — The webhook ID
-
----
+1. Create a new file in `src/tools/` or add to an existing category
+2. Follow the pattern: `registerXxxTools(server, client)` function
+3. Import and call the register function in `src/index.ts`
+4. Add tests in `src/tools/tools.test.ts`
+5. Update this README
 
 ## Troubleshooting
 
 ### "Missing required environment variable: MONZO_ACCESS_TOKEN"
-You haven't set the `MONZO_ACCESS_TOKEN` in your MCP server config. See [Getting Your Monzo Access Token](#getting-your-monzo-access-token).
+
+Set the `MONZO_ACCESS_TOKEN` in your MCP server config. See [Prerequisites](#prerequisites).
 
 ### "Monzo API error (401): unauthorized"
+
 Your access token has expired (tokens last ~6 hours). Get a new one from the [Monzo Playground](https://developers.monzo.com/api/playground).
 
 ### "Monzo API error (403): forbidden"
+
 You may need to complete Strong Customer Authentication. Open the Monzo app and check for a pending approval notification.
 
-### "Transaction history is empty or limited"
+### Transaction history is empty or limited
+
 After 5 minutes post-authentication, the API only returns the last 90 days of transactions. This is a Monzo security restriction.
 
 ### Pots withdrawal fails
+
 Pots with "added security" (locked pots) cannot be withdrawn from via the API. Unlock the pot in the Monzo app first.
 
----
+### Tools not appearing in Claude
+
+- **Claude Desktop:** Restart the application after updating config
+- **Claude Code:** Restart the MCP server or reload settings
+- Verify your config uses `"command": "npx"` with `"args": ["-y", "monzo-mcp"]`
 
 ## License
 
