@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  TOKEN_BUFFER_MS,
   jsonResponse,
   errorResponse,
-  buildParams,
+  definedOnly,
+  safeId,
+  stripAttachmentLinks,
   logToolCall,
 } from "./utils.js";
 
@@ -15,9 +16,9 @@ describe("jsonResponse()", () => {
     expect(JSON.parse(result.content[0].text)).toEqual({ balance: 1000 });
   });
 
-  it("pretty-prints JSON with 2-space indent", () => {
+  it("emits compact JSON", () => {
     const result = jsonResponse({ a: 1 });
-    expect(result.content[0].text).toBe(JSON.stringify({ a: 1 }, null, 2));
+    expect(result.content[0].text).toBe('{"a":1}');
   });
 });
 
@@ -41,24 +42,24 @@ describe("errorResponse()", () => {
   });
 });
 
-describe("buildParams()", () => {
+describe("definedOnly()", () => {
   it("converts values to strings", () => {
-    expect(buildParams({ limit: 50, account_id: "acc_123" })).toEqual({
+    expect(definedOnly({ limit: 50, account_id: "acc_123" })).toEqual({
       limit: "50",
       account_id: "acc_123",
     });
   });
 
   it("filters out undefined values", () => {
-    expect(buildParams({ a: "yes", b: undefined })).toEqual({ a: "yes" });
+    expect(definedOnly({ a: "yes", b: undefined })).toEqual({ a: "yes" });
   });
 
   it("filters out null values", () => {
-    expect(buildParams({ a: "yes", b: null })).toEqual({ a: "yes" });
+    expect(definedOnly({ a: "yes", b: null })).toEqual({ a: "yes" });
   });
 
   it("returns empty object when all values are undefined", () => {
-    expect(buildParams({ a: undefined, b: undefined })).toEqual({});
+    expect(definedOnly({ a: undefined, b: undefined })).toEqual({});
   });
 });
 
@@ -101,8 +102,42 @@ describe("logToolCall()", () => {
   });
 });
 
-describe("constants", () => {
-  it("TOKEN_BUFFER_MS is 60 seconds", () => {
-    expect(TOKEN_BUFFER_MS).toBe(60_000);
+describe("safeId()", () => {
+  it("accepts Monzo-style IDs and rejects path/query tricks", () => {
+    const schema = safeId("id");
+    expect(schema.safeParse("acc_0000A1b2-C3").success).toBe(true);
+    for (const bad of [
+      "../x",
+      "%2e%2e/x",
+      "1?x",
+      "1#x",
+      "a/b",
+      "",
+      "a b",
+      "x".repeat(101),
+    ]) {
+      expect(schema.safeParse(bad).success, bad).toBe(false);
+    }
+  });
+});
+
+describe("stripAttachmentLinks()", () => {
+  it("removes attachment urls at any depth and keeps the rest", () => {
+    const out = stripAttachmentLinks({
+      transactions: [
+        {
+          id: "tx_1",
+          attachments: [{ id: "a1", url: "https://s3/x?sig=1", type: "image/png" }],
+        },
+      ],
+    });
+    expect(out).toEqual({
+      transactions: [{ id: "tx_1", attachments: [{ id: "a1", type: "image/png" }] }],
+    });
+  });
+  it("leaves unrelated url fields alone", () => {
+    expect(stripAttachmentLinks({ merchant: { url: "https://m" } })).toEqual({
+      merchant: { url: "https://m" },
+    });
   });
 });
