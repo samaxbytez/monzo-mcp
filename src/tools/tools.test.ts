@@ -15,11 +15,9 @@ function createMockServer() {
   const tools = new Map<string, ToolHandler>();
   return {
     server: {
-      registerTool: vi.fn(
-        (name: string, _config: unknown, cb: ToolHandler) => {
-          tools.set(name, cb);
-        }
-      ),
+      registerTool: vi.fn((name: string, _config: unknown, cb: ToolHandler) => {
+        tools.set(name, cb);
+      }),
     } as unknown as McpServer,
     tools,
   };
@@ -110,9 +108,7 @@ describe("Account tools", () => {
   it("returns errorResponse when client throws", async () => {
     const { server, tools } = createMockServer();
     const client = createMockClient();
-    (client.get as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("network down")
-    );
+    (client.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("network down"));
     registerAccountTools(server, client);
 
     const handler = tools.get("monzo_whoami")!;
@@ -236,6 +232,46 @@ describe("Transaction tools", () => {
     });
   });
 
+  it("monzo_list_transactions reports pagination and strips attachment links", async () => {
+    const { server, tools } = createMockServer();
+    const client = createMockClient();
+    (client.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      transactions: [
+        { id: "tx_1", attachments: [{ id: "a", url: "https://s3/sig" }] },
+        { id: "tx_2", attachments: [] },
+      ],
+    });
+    registerTransactionTools(server, client);
+
+    const result = (await tools.get("monzo_list_transactions")!({
+      account_id: "acc_1",
+      limit: 2,
+    })) as { content: { text: string }[] };
+
+    const body = JSON.parse(result.content[0].text);
+    expect(body.pagination).toEqual({ returned: 2, has_more: true, next_since: "tx_2" });
+    expect(result.content[0].text).not.toContain("s3/sig");
+  });
+
+  it("monzo_list_transactions reports no more pages on a short page", async () => {
+    const { server, tools } = createMockServer();
+    const client = createMockClient();
+    (client.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      transactions: [{ id: "tx_1" }],
+    });
+    registerTransactionTools(server, client);
+
+    const result = (await tools.get("monzo_list_transactions")!({
+      account_id: "acc_1",
+    })) as {
+      content: { text: string }[];
+    };
+    expect(JSON.parse(result.content[0].text).pagination).toEqual({
+      returned: 1,
+      has_more: false,
+    });
+  });
+
   it("monzo_get_transaction omits expand when not requested", async () => {
     const { server, tools } = createMockServer();
     const client = createMockClient();
@@ -246,7 +282,7 @@ describe("Transaction tools", () => {
       expand_merchant: false,
     });
 
-    expect(client.get).toHaveBeenCalledWith("/transactions/tx_123", {});
+    expect(client.get).toHaveBeenCalledWith("/transactions/tx_123", undefined);
   });
 
   it("monzo_annotate_transaction sends metadata key-value", async () => {
@@ -402,13 +438,11 @@ describe("Receipt tools", () => {
     const client = createMockClient();
     registerReceiptTools(server, client);
 
-    const items = [
-      { description: "Coffee", amount: 350, currency: "GBP", quantity: 1 },
-    ];
+    const items = [{ description: "Coffee", amount: 350, currency: "GBP", quantity: 1 }];
 
     await tools.get("monzo_create_receipt")!({
       transaction_id: "tx_123",
-      items: JSON.stringify(items),
+      items,
       tax: undefined,
     });
 
@@ -424,13 +458,11 @@ describe("Receipt tools", () => {
     const client = createMockClient();
     registerReceiptTools(server, client);
 
-    const items = [
-      { description: "Lunch", amount: 1200, currency: "GBP", quantity: 1 },
-    ];
+    const items = [{ description: "Lunch", amount: 1200, currency: "GBP", quantity: 1 }];
 
     await tools.get("monzo_create_receipt")!({
       transaction_id: "tx_456",
-      items: JSON.stringify(items),
+      items,
       tax: 200,
     });
 
@@ -464,21 +496,6 @@ describe("Receipt tools", () => {
     expect(client.deleteReq).toHaveBeenCalledWith("/transaction-receipts", {
       external_id: "tx_123",
     });
-  });
-
-  it("returns errorResponse on invalid JSON items", async () => {
-    const { server, tools } = createMockServer();
-    const client = createMockClient();
-    registerReceiptTools(server, client);
-
-    const result = (await tools.get("monzo_create_receipt")!({
-      transaction_id: "tx_123",
-      items: "not valid json",
-      tax: undefined,
-    })) as { isError: boolean; content: { text: string }[] };
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("Error");
   });
 });
 
@@ -536,9 +553,7 @@ describe("Webhook tools", () => {
   it("returns errorResponse when client throws", async () => {
     const { server, tools } = createMockServer();
     const client = createMockClient();
-    (client.postForm as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("timeout")
-    );
+    (client.postForm as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("timeout"));
     registerWebhookTools(server, client);
 
     const result = (await tools.get("monzo_register_webhook")!({

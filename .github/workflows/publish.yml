@@ -1,0 +1,144 @@
+name: Publish to npm
+
+# Publishes to npm whenever package.json's version changes on main (i.e. a
+# release PR is merged). Ordinary merges are no-ops because the version guard
+# skips versions already present on the registry.
+#
+# Authentication uses npm Trusted Publishing (OIDC) — no NPM_TOKEN secret is
+# required. Configure the trusted publisher on npmjs.com to point at this
+# workflow file (publish.yml) before the first release lands.
+#
+# Split into two jobs so dependency code never runs where the OIDC token can be
+# minted: `build` installs and runs everything with a read-only token; `publish`
+# holds id-token/contents write, installs nothing, and publishes the prebuilt
+# artifact with --ignore-scripts.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      published: ${{ steps.v.outputs.published }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Determine version and whether it is already published
+        id: v
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$NAME@$VERSION already on npm — skipping publish."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Publishing $NAME@$VERSION."
+          fi
+
+      # --ignore-scripts: no dependency's install script gets a chance to alter
+      # build/ before it is uploaded and published. Nothing here needs one.
+      - name: Install dependencies
+        if: steps.v.outputs.published == 'false'
+        run: npm ci --ignore-scripts
+
+      - name: Verify (lint, type-check, test, build)
+        if: steps.v.outputs.published == 'false'
+        run: |
+          npm run lint
+          npm run type-check
+          npm test
+          npm run build
+          npm run smoke
+
+      - name: Upload build
+        if: steps.v.outputs.published == 'false'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build
+          path: build/
+          retention-days: 1
+
+  publish:
+    needs: build
+    # Only when there is a new version, so ordinary merges don't wait for approval.
+    if: needs.build.outputs.published == 'false'
+    # Requires a maintainer's approval in GitHub before this job (and its OIDC
+    # token) runs, so a stolen GitHub login can't publish to npm on its own.
+    environment: npm-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release tag + GitHub Release
+      id-token: write # OIDC token for npm auth + provenance
+    steps:
+      # No git credentials on disk in the job that can publish: the tag and
+      # Release are created through the API below.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Download build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build
+          path: build/
+
+      # Trusted publishing needs npm >= 11.5.1, which Node 24 already bundles.
+      # Check rather than install: nothing is downloaded and run in this job,
+      # which holds the OIDC token.
+      - name: Check npm supports OIDC trusted publishing
+        run: |
+          node -e '
+            const [maj, min] = process.argv[1].split(".").map(Number);
+            if (maj < 11 || (maj === 11 && min < 5)) {
+              console.error(`npm ${process.argv[1]} is too old for trusted publishing`);
+              process.exit(1);
+            }' "$(npm --version)"
+
+      # --ignore-scripts: the build already ran in the read-only job, so
+      # prepublishOnly (and any lifecycle script) must not run here.
+      - name: Publish to npm
+        run: |
+          chmod 755 build/index.js
+          npm publish --access public --provenance --ignore-scripts
+
+      # Idempotent: creates the tag and Release only if missing, so re-running
+      # this job after a partial failure (published, but no Release) repairs it.
+      - name: Ensure release tag and GitHub Release exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          # --target creates the tag at this commit through the API if it doesn't
+          # exist yet; an existing tag is used as it is.
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$TAG" \
+              --notes "See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for details."
+          fi

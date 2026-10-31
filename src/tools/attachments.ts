@@ -1,12 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { MonzoClient } from "../client.js";
-import { jsonResponse, errorResponse, logToolCall } from "../utils.js";
+import { runTool, safeId } from "../utils.js";
 
-export function registerAttachmentTools(
-  server: McpServer,
-  client: MonzoClient
-): void {
+export function registerAttachmentTools(server: McpServer, client: MonzoClient): void {
   server.registerTool(
     "monzo_upload_attachment",
     {
@@ -16,30 +13,24 @@ export function registerAttachmentTools(
       inputSchema: {
         file_name: z
           .string()
+          .min(1)
+          .max(200)
           .describe("The name of the file (e.g. 'receipt.png')"),
         file_type: z
           .string()
+          .regex(/^image\/[a-zA-Z0-9.+-]+$/, "must be an image MIME type")
           .describe("The MIME type of the file (e.g. 'image/png', 'image/jpeg')"),
-        content_length: z
-          .number()
-          .int()
-          .positive()
-          .describe("The file size in bytes"),
+        content_length: z.number().int().positive().describe("The file size in bytes"),
       },
     },
-    async ({ file_name, file_type, content_length }) => {
-      logToolCall("monzo_upload_attachment", { file_name, file_type });
-      try {
-        const result = await client.postForm("/attachment/upload", {
+    ({ file_name, file_type, content_length }) =>
+      runTool("monzo_upload_attachment", { file_name, file_type }, () =>
+        client.postForm("/attachment/upload", {
           file_name,
           file_type,
           content_length: String(content_length),
-        });
-        return jsonResponse(result);
-      } catch (error) {
-        return errorResponse(error);
-      }
-    }
+        })
+      )
   );
 
   server.registerTool(
@@ -49,52 +40,34 @@ export function registerAttachmentTools(
       description:
         "Register an uploaded image as an attachment on a Monzo transaction. The image must already be uploaded to the URL from monzo_upload_attachment.",
       inputSchema: {
-        external_id: z
-          .string()
-          .describe("The transaction ID to attach the image to"),
+        external_id: safeId("The transaction ID to attach the image to"),
         file_url: z
-          .string()
+          .url({ protocol: /^https$/ })
           .describe("The file_url returned from monzo_upload_attachment"),
         file_type: z
           .string()
+          .regex(/^image\/[a-zA-Z0-9.+-]+$/, "must be an image MIME type")
           .describe("The MIME type of the file (e.g. 'image/png')"),
       },
     },
-    async ({ external_id, file_url, file_type }) => {
-      logToolCall("monzo_register_attachment", { external_id });
-      try {
-        const result = await client.postForm("/attachment/register", {
-          external_id,
-          file_url,
-          file_type,
-        });
-        return jsonResponse(result);
-      } catch (error) {
-        return errorResponse(error);
-      }
-    }
+    ({ external_id, file_url, file_type }) =>
+      runTool("monzo_register_attachment", { external_id }, () =>
+        client.postForm("/attachment/register", { external_id, file_url, file_type })
+      )
   );
 
   server.registerTool(
     "monzo_deregister_attachment",
     {
       title: "Deregister Attachment",
-      description:
-        "Remove an attachment from a Monzo transaction.",
+      description: "Remove an attachment from a Monzo transaction.",
       inputSchema: {
-        id: z
-          .string()
-          .describe("The attachment ID to remove"),
+        id: safeId("The attachment ID to remove"),
       },
     },
-    async ({ id }) => {
-      logToolCall("monzo_deregister_attachment", { id });
-      try {
-        const result = await client.postForm("/attachment/deregister", { id });
-        return jsonResponse(result);
-      } catch (error) {
-        return errorResponse(error);
-      }
-    }
+    ({ id }) =>
+      runTool("monzo_deregister_attachment", { id }, () =>
+        client.postForm("/attachment/deregister", { id })
+      )
   );
 }

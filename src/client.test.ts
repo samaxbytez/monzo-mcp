@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { MonzoClient, MonzoApiError } from "./client.js";
+import { MonzoClient, MonzoApiError, parseBaseUrl } from "./client.js";
 
 function mockOk(body: unknown): Response {
   return {
@@ -14,8 +14,7 @@ function mockError(status: number, body: unknown): Response {
   return {
     ok: false,
     status,
-    text: async () =>
-      typeof body === "string" ? body : JSON.stringify(body),
+    text: async () => (typeof body === "string" ? body : JSON.stringify(body)),
     json: async () => body,
   } as Response;
 }
@@ -84,9 +83,7 @@ describe("MonzoClient", () => {
 
       const [, opts] = mockFetch.mock.calls[0];
       expect(opts.method).toBe("POST");
-      expect(opts.headers["Content-Type"]).toBe(
-        "application/x-www-form-urlencoded"
-      );
+      expect(opts.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
       expect(opts.body).toContain("account_id=acc_123");
       expect(opts.body).toContain("url=https");
     });
@@ -105,9 +102,7 @@ describe("MonzoClient", () => {
       const [url, opts] = mockFetch.mock.calls[0];
       expect(url).toBe("https://api.monzo.com/pots/pot_123/deposit");
       expect(opts.method).toBe("PUT");
-      expect(opts.headers["Content-Type"]).toBe(
-        "application/x-www-form-urlencoded"
-      );
+      expect(opts.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
     });
   });
 
@@ -121,9 +116,7 @@ describe("MonzoClient", () => {
 
       const [, opts] = mockFetch.mock.calls[0];
       expect(opts.method).toBe("PATCH");
-      expect(opts.headers["Content-Type"]).toBe(
-        "application/x-www-form-urlencoded"
-      );
+      expect(opts.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
     });
   });
 
@@ -206,9 +199,7 @@ describe("MonzoClient", () => {
     });
 
     it("handles malformed error body gracefully", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockError(500, "not json at all")
-      );
+      mockFetch.mockResolvedValueOnce(mockError(500, "not json at all"));
 
       const client = createClient();
       try {
@@ -225,10 +216,87 @@ describe("MonzoClient", () => {
 
     it("formats error message correctly", () => {
       const err = new MonzoApiError(403, "forbidden", "Not allowed");
-      expect(err.message).toBe(
-        "Monzo API error (403): forbidden - Not allowed"
-      );
+      expect(err.message).toBe("Monzo API error (403): forbidden - Not allowed");
       expect(err.name).toBe("MonzoApiError");
+    });
+  });
+
+  describe("request path safety", () => {
+    it.each([
+      "../x",
+      "/../x",
+      "/a/../x",
+      "/%2e%2e/x",
+      "/a%2fb",
+      "//evil.com/x",
+      "https://evil.com/x",
+      "/x?y=1",
+      "/x#y",
+      "x",
+      "/\\evil",
+      "/a\r\nb",
+      "/\u0000",
+    ])("refuses %j", async (path) => {
+      await expect(createClient().get(path)).rejects.toThrow(/Refusing/);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("keeps requests under a base path", async () => {
+      mockFetch.mockResolvedValueOnce(mockOk({}));
+      await new MonzoClient("t", "http://127.0.0.1:9/v1").get("/accounts");
+      expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:9/v1/accounts");
+    });
+
+    it("does not follow redirects and sets a timeout", async () => {
+      mockFetch.mockResolvedValueOnce(mockOk({}));
+      await createClient().get("/ping/whoami");
+      const opts = mockFetch.mock.calls[0][1];
+      expect(opts.redirect).toBe("error");
+      expect(opts.signal).toBeInstanceOf(AbortSignal);
+    });
+  });
+
+  describe("errors", () => {
+    it("reports 429 with Retry-After", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: new Headers({ "retry-after": "12" }),
+        text: async () => "<html>slow down</html>",
+      } as Response);
+      await expect(createClient().get("/accounts")).rejects.toThrow(
+        /retry after 12 seconds/
+      );
+    });
+
+    it("does not echo non-JSON error bodies", async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockError(502, "<html>secret internal detail</html>")
+      );
+      const err = await createClient()
+        .get("/accounts")
+        .catch((e) => e);
+      expect(err.message).not.toContain("secret internal detail");
+    });
+
+    it("rejects a non-JSON success body", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => "<html>",
+      } as Response);
+      await expect(createClient().get("/accounts")).rejects.toThrow(/non-JSON/);
+    });
+  });
+
+  describe("parseBaseUrl()", () => {
+    it("defaults to the Monzo API", () => {
+      expect(parseBaseUrl(undefined).href).toBe("https://api.monzo.com/");
+    });
+    it("allows http only on loopback", () => {
+      expect(() => parseBaseUrl("http://127.0.0.1:8080")).not.toThrow();
+      expect(() => parseBaseUrl("http://evil.example")).toThrow(/https/);
+      expect(() => parseBaseUrl("ftp://127.0.0.1")).toThrow(/https/);
     });
   });
 });
